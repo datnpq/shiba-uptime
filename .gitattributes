@@ -1,0 +1,4 @@
+# The run: blocks below are executed by bash on Ubuntu, where a stray
+# carriage return at the end of a line is a syntax error.
+*.yml text eol=lf
+*.md  text eol=lf

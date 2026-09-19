@@ -1,0 +1,29 @@
+# Keeps the uptime schedule alive.
+#
+# GitHub turns off scheduled workflows in a repository that has seen no
+# activity for sixty days. This repository is meant to sit still and do its
+# job, so left alone it would switch itself off two months in — and a monitor
+# that quietly stops is worse than no monitor, because its silence still reads
+# as good news. One empty commit a month is enough activity to prevent that.
+
+name: keepalive
+
+on:
+  schedule:
+    - cron: '17 4 1 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  nudge:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - run: |
+          git config user.name 'shiba-uptime'
+          git config user.email 'noreply@shiba.pw'
+          git commit --allow-empty -m 'chore: keep the uptime schedule from expiring'
+          git push
