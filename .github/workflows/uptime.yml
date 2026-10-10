@@ -15,6 +15,11 @@ on:
   schedule:
     - cron: '*/10 * * * *'
   workflow_dispatch:
+    inputs:
+      test_alert:
+        description: 'Also send a test message, to prove the alarm still reaches a phone'
+        type: boolean
+        default: false
 
 concurrency:
   group: uptime
@@ -26,6 +31,42 @@ jobs:
     timeout-minutes: 5
 
     steps:
+      # An alarm nobody has heard in months is not an alarm. A bot token can be
+      # revoked, a chat can be deleted, a secret can be rotated in one place and
+      # not the other — and every one of those failures is silent until the day
+      # it matters. This makes the wire checkable on demand.
+      - name: Prove the alarm still works
+        if: inputs.test_alert
+        env:
+          TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          CHAT: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          if [ -z "$TOKEN" ] || [ -z "$CHAT" ]; then
+            echo "::error::No Telegram secrets are set; the alarm is silent."
+            exit 1
+          fi
+
+          cat > message.txt <<'EOF'
+          🔔 shiba.pw uptime — test message
+
+          The external watchman can still reach this chat.
+          Nothing is wrong; this run was started by hand.
+          EOF
+
+          code=$(curl -sS --max-time 20 -o response.json -w '%{http_code}' \
+            -X POST "https://api.telegram.org/bot${TOKEN}/sendMessage" \
+            -d chat_id="${CHAT}" \
+            -d disable_web_page_preview=true \
+            --data-urlencode "text@message.txt")
+
+          if [ "$code" != "200" ]; then
+            echo "::error::Telegram refused the test message (HTTP $code)."
+            cat response.json
+            exit 1
+          fi
+
+          echo "Telegram accepted the test message."
+
       - name: Probe the public site
         run: |
           : > failures.txt
