@@ -71,8 +71,15 @@ jobs:
         run: |
           : > failures.txt
 
+          # The second argument decides whether redirects are followed. The bare
+          # domain 301s to a locale, so the home page is only healthy if the
+          # whole chain ends in a 200 — checking the 301 alone would pass while
+          # every page behind it was broken.
           fetch() {
-            curl -sS -o /dev/null -w '%{http_code}' --max-time 20 \
+            follow=''
+            if [ "$2" = follow ]; then follow='-L'; fi
+
+            curl -sS $follow -o /dev/null -w '%{http_code}' --max-time 20 \
                  -A 'shiba-uptime (+https://shiba.pw)' "$1" 2>/dev/null || echo 000
           }
 
